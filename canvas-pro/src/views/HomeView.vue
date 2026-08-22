@@ -11,7 +11,7 @@
         </div>
         <nav class="flex items-center gap-1">
           <button class="btn-ghost text-sm" @click="router.push('/guide')">教程</button>
-          <button class="btn-ghost text-sm" @click="router.push('/examples/business-model')">案例库</button>
+          <button class="btn-ghost text-sm" @click="router.push('/examples')">案例库</button>
         </nav>
       </div>
     </header>

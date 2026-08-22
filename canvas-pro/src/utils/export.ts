@@ -87,9 +87,3 @@ export async function exportPNG(
   a.click()
   document.body.removeChild(a)
 }
-
-export function createShareLink(canvas: CanvasInstance): string {
-  const json = JSON.stringify(canvas)
-  const encoded = btoa(encodeURIComponent(json))
-  return window.location.origin + window.location.pathname + '#/preview/' + canvas.id + '?data=' + encoded
-}

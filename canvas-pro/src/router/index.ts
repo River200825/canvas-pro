@@ -29,12 +29,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ExampleView.vue'),
     props: true,
   },
-  {
-    path: '/preview/:id',
-    name: 'Preview',
-    component: () => import('@/views/PreviewView.vue'),
-    props: true,
-  },
 ]
 
 const router = createRouter({

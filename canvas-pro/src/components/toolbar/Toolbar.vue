@@ -48,17 +48,12 @@
       <Download class="h-4 w-4" />
       <span class="hidden sm:inline">导出</span>
     </button>
-
-    <button class="btn-secondary !py-1.5 gap-1.5" @click="uiStore.openModal('share')">
-      <Share2 class="h-4 w-4" />
-      <span class="hidden sm:inline">分享</span>
-    </button>
   </header>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Download, History, Keyboard, Maximize2, Share2 } from 'lucide-vue-next'
+import { Download, History, Keyboard, Maximize2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import CanvasSwitcher from '@/components/canvas/CanvasSwitcher.vue'

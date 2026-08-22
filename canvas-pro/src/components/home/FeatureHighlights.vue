@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { History, MousePointerClick, Share2, FileDown, type LucideIcon } from 'lucide-vue-next'
+import { History, MousePointerClick, LayoutTemplate, FileDown, type LucideIcon } from 'lucide-vue-next'
 
 interface Feature {
   icon: LucideIcon
@@ -41,9 +41,9 @@ const FEATURES: Feature[] = [
     desc: 'PNG 高清位图、PDF 自动分页文档、Markdown 结构化文本与 JSON 备份',
   },
   {
-    icon: Share2,
-    title: '链接分享',
-    desc: 'Base64 编码分享链接，打开即只读预览，支持一键复制为可编辑副本',
+    icon: LayoutTemplate,
+    title: '多模板与案例库',
+    desc: '商业模型画布、精益画布、SWOT 三大模板，内置经典公司案例一键套用',
   },
 ]
 </script>

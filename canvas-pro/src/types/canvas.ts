@@ -14,6 +14,8 @@ export interface CanvasBlock {
   titleEn: string
   order: number
   widthPercent: number
+  /** 传统布局中的 grid-template-areas 区域名（如 BMC 的 partners/value/costs） */
+  area?: string
   x?: number
   y?: number
   width?: number

@@ -18,8 +18,8 @@
       }"
     >
       <div
-        class="grid gap-4"
-        :style="{ gridTemplateColumns: 'repeat(3, minmax(240px, 1fr))', maxWidth: '1200px', margin: '0 auto' }"
+        class="tpl-grid"
+        :style="gridStyle ?? { gridTemplateColumns: 'repeat(3, minmax(240px, 1fr))', maxWidth: '1200px', margin: '0 auto', display: 'grid', gap: '1rem' }"
         role="list"
         aria-label="画布区块"
       >
@@ -42,6 +42,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CanvasBlock from './CanvasBlock.vue'
 import type { NoteMovedPayload } from './CanvasBlock.vue'
 import { useCanvasStore } from '@/stores'
+import { getGridStyle } from '@/templates/layout'
 import type { StickyNote } from '@/types/note'
 
 defineProps<{
@@ -61,6 +62,11 @@ const blocks = computed(() => {
   const t = canvasStore.currentTemplate
   if (!t?.blocks) return []
   return t.blocks.slice().sort((a, b) => a.order - b.order)
+})
+
+const gridStyle = computed(() => {
+  const t = canvasStore.currentTemplate
+  return t ? getGridStyle(t) : null
 })
 
 const notesByBlock = computed(() => {
@@ -151,3 +157,17 @@ onUnmounted(() => {
   containerRef.value?.removeEventListener('wheel', handleWheel)
 })
 </script>
+
+<style scoped>
+/* 小屏退化为两列流式布局，忽略传统区域 */
+@media (max-width: 899px) {
+  .tpl-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-areas: none !important;
+    grid-template-rows: auto !important;
+  }
+  .tpl-grid > :deep(*) {
+    grid-area: auto !important;
+  }
+}
+</style>

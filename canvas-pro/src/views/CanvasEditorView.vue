@@ -21,36 +21,38 @@
 
     <SnapshotsPanel v-if="uiStore.activeModal === 'snapshots'" @close="uiStore.closeModal()" />
     <ExportDialog v-if="uiStore.activeModal === 'export'" @close="uiStore.closeModal()" />
-    <ShareDialog v-if="uiStore.activeModal === 'share'" @close="uiStore.closeModal()" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import Toolbar from '@/components/toolbar/Toolbar.vue'
 import CanvasGrid from '@/components/canvas/CanvasGrid.vue'
 import SnapshotsPanel from '@/components/canvas/SnapshotsPanel.vue'
 import ExportDialog from '@/components/export/ExportDialog.vue'
-import ShareDialog from '@/components/export/ShareDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const canvasStore = useCanvasStore()
 const uiStore = useUIStore()
 
 function syncRouteCanvas(): void {
-  const id = route.params.id as string | undefined
-  const templateId = route.query.template as string | undefined
-  if (!id) return
+  const templateId = (route.query.template as string | undefined) ?? undefined
 
-  if (id === 'new') {
+  if (route.name === 'NewCanvas') {
     if (!canvasStore.currentCanvas || templateId) {
-      canvasStore.createCanvas(undefined, templateId)
+      const canvas = canvasStore.createCanvas(undefined, templateId)
+      // 规范化地址到具体画布 id，刷新后仍指向该画布
+      router.replace(`/canvas/${canvas.id}`)
     }
     return
   }
+
+  const id = route.params.id as string | undefined
+  if (!id) return
 
   if (canvasStore.currentCanvasId !== id) {
     canvasStore.switchCanvas(id)
@@ -59,8 +61,7 @@ function syncRouteCanvas(): void {
 
 onMounted(syncRouteCanvas)
 watch(
-  () => [route.params.id, route.query.template],
-  () => syncRouteCanvas(),
-  { deep: true }
+  () => [route.name, route.params.id, route.query.template],
+  () => syncRouteCanvas()
 )
 </script>

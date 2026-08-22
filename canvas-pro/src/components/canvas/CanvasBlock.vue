@@ -2,7 +2,7 @@
   <div
     class="flex flex-col min-h-[220px] rounded-xl border border-canvas-border shadow-block overflow-hidden transition-all duration-150"
     :class="{ 'ring-2 ring-primary-500 ring-offset-1': isDragOver }"
-    :style="{ borderTopColor: block.color || '#e2e8f0', borderTopWidth: '3px' }"
+    :style="{ borderTopColor: block.color || '#e2e8f0', borderTopWidth: '3px', ...(block.area ? { gridArea: block.area } : {}) }"
     role="listitem"
     :aria-label="block.title"
     @dragover.prevent="handleDragOver"

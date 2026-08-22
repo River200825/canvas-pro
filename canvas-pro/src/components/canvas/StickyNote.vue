@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="noteRootRef"
     class="sticky-note relative group rounded-lg shadow-note hover:shadow-note-hover transition-all duration-150 p-2.5 pl-3.5"
     :class="{ 'opacity-60': note.locked }"
     :style="{ backgroundColor: color.bg, borderColor: color.border }"
@@ -9,6 +10,7 @@
     :draggable="!presentationMode && !note.locked"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
+    @focusout="handleFocusOut"
   >
     <div
       class="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg opacity-70"
@@ -33,13 +35,12 @@
         placeholder="标题..."
         aria-label="便利贴标题"
         @keydown="handleTitleKeydown"
-        @blur="saveEdit"
       />
       <div
         v-else
         class="flex-1 min-w-0 font-semibold text-sm text-text truncate cursor-text"
         title="点击编辑标题"
-        @click="startEdit"
+        @click="startEdit()"
       >
         {{ note.title || '无标题' }}
       </div>
@@ -98,11 +99,11 @@
     />
     <div
       v-else
-      class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words mt-1 line-clamp-4 cursor-text"
+      class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words mt-1 line-clamp-4 cursor-text min-h-[16px]"
       title="点击编辑内容"
-      @click="startEdit"
+      @click.stop="startEdit(true)"
     >
-      {{ note.content }}
+      {{ note.content || '\u00a0' }}
     </div>
 
     <div
@@ -141,16 +142,32 @@ const isEditing = ref(false)
 const editTitle = ref('')
 const editContent = ref('')
 const showColorPicker = ref(false)
+const noteRootRef = ref<HTMLElement | null>(null)
 const titleInputRef = ref<HTMLInputElement | null>(null)
+const contentInputRef = ref<HTMLTextAreaElement | null>(null)
 
 const color = computed(() => getNoteColor(props.note.color))
 
-function startEdit(): void {
+function startEdit(focusContent = false): void {
   if (props.presentationMode || props.note.locked) return
   isEditing.value = true
   editTitle.value = props.note.title
   editContent.value = props.note.content
-  void nextTick(() => titleInputRef.value?.focus())
+  void nextTick(() => {
+    if (focusContent) {
+      contentInputRef.value?.focus()
+    } else {
+      titleInputRef.value?.focus()
+    }
+  })
+}
+
+// 焦点离开整张便利贴时才保存；标题→内容切换不中断编辑
+function handleFocusOut(event: FocusEvent): void {
+  if (!isEditing.value) return
+  const next = event.relatedTarget as Node | null
+  if (next && noteRootRef.value?.contains(next)) return
+  saveEdit()
 }
 
 function saveEdit(): void {

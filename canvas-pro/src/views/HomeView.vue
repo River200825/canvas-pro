@@ -10,6 +10,14 @@
           <span class="text-lg font-bold text-text">CanvasPro</span>
         </div>
         <nav class="flex items-center gap-1">
+          <button
+            v-if="latestCanvas"
+            class="btn-primary !py-1.5 text-sm gap-1.5 mr-1"
+            :title="`继续编辑：${latestCanvas.name}`"
+            @click="router.push(`/canvas/${latestCanvas.id}`)"
+          >
+            <PencilLine class="w-4 h-4" /> 我的画布
+          </button>
           <button class="btn-ghost text-sm" @click="router.push('/guide')">教程</button>
           <button class="btn-ghost text-sm" @click="router.push('/examples')">案例库</button>
         </nav>
@@ -28,7 +36,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { PencilLine } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { getTemplateById } from '@/templates'
 import HeroSection from '@/components/home/HeroSection.vue'
@@ -38,6 +48,12 @@ import FeatureHighlights from '@/components/home/FeatureHighlights.vue'
 
 const router = useRouter()
 const canvasStore = useCanvasStore()
+
+/** 最近更新的画布，供「我的画布」一键继续 */
+const latestCanvas = computed(() => {
+  const list = [...canvasStore.canvases].sort((a, b) => b.updatedAt - a.updatedAt)
+  return list[0] ?? null
+})
 
 function createCanvas(templateId?: string): void {
   canvasStore.setTemplate(templateId ? getTemplateById(templateId) : getTemplateById('business-model-canvas'))

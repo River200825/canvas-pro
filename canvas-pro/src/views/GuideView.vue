@@ -109,9 +109,9 @@ const steps: StepData[] = [
   },
   {
     id: 'export-share',
-    title: '导出与分享',
+    title: '导出与备份',
     description:
-      '工具栏右侧提供完整导出功能：\n- PNG：1x/2x/3x 倍率，可选透明背景\n- PDF：A4/A3、横纵向、自动分页\n- Markdown / JSON：结构化文档与完整备份\n- 分享链接：只读预览 + 一键编辑副本',
+      '工具栏右侧提供完整导出功能：\n- PNG：1x/2x/3x 倍率，可选透明背景\n- PDF：A4/A3、横纵向、自动分页\n- Markdown / JSON：结构化文档与完整数据备份\n- 导入 JSON：在切换器中随时恢复备份',
   },
   {
     id: 'presentation',

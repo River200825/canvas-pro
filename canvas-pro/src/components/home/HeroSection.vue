@@ -5,8 +5,8 @@
       <span class="block text-primary-600 mt-2">CanvasPro</span>
     </h1>
     <p class="text-lg text-text-muted max-w-2xl mx-auto mb-10">
-      1:1 复刻 Canvanizer 核心体验。便利贴式头脑风暴、多模板支持、快照版本控制、
-      PNG / PDF / Markdown 导出与一键分享。
+      1:1 复刻 Canvanizer 核心体验。便利贴式头脑风暴、多模板支持、快照版本控制，
+      PNG / PDF / Markdown 多格式导出。
     </p>
     <div class="flex flex-wrap items-center justify-center gap-3">
       <button class="btn-primary !px-8 !py-3 text-base gap-2" @click="$emit('create')">

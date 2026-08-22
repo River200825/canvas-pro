@@ -1,49 +1,39 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/HomeView.js'),
+    component: () => import('@/views/HomeView.vue'),
   },
   {
     path: '/guide',
     name: 'Guide',
-    component: () => import('@/views/GuideView.jsx'),
-  },
-  {
-    path: '/canvas/:id',
-    name: 'CanvasEditor',
-    component: () => import('@/views/CanvasEditorView.js'),
-    props: true,
+    component: () => import('@/views/GuideView.vue'),
   },
   {
     path: '/canvas/new',
     name: 'NewCanvas',
-    component: () => import('@/views/CanvasEditorView.js'),
-    props: (route: { query: Record<string, string | undefined> }) => ({ template: route.query.template }),
+    component: () => import('@/views/CanvasEditorView.vue'),
+    props: (route) => ({ template: route.query.template }),
   },
   {
-    path: '/examples/:id',
-    name: 'ExampleView',
-    component: () => import('@/views/ExampleView.js'),
+    path: '/canvas/:id',
+    name: 'CanvasEditor',
+    component: () => import('@/views/CanvasEditorView.vue'),
+    props: true,
+  },
+  {
+    path: '/examples/:id?',
+    name: 'Examples',
+    component: () => import('@/views/ExampleView.vue'),
     props: true,
   },
   {
     path: '/preview/:id',
-    name: 'PreviewView',
-    component: () => import('@/views/PreviewView.js'),
+    name: 'Preview',
+    component: () => import('@/views/PreviewView.vue'),
     props: true,
-  },
-  {
-    path: '/test',
-    name: 'Test',
-    component: () => import('@/views/TestView.js'),
-  },
-  {
-    path: '/minimal',
-    name: 'Minimal',
-    component: () => import('@/views/MinimalView.js'),
   },
 ]
 

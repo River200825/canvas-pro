@@ -63,11 +63,16 @@ export function exportMarkdown(canvas: CanvasInstance, template: CanvasTemplate)
   downloadBlob(blob, canvas.name + '_' + timestamp() + '.md')
 }
 
-export async function exportPNG(element: HTMLElement, canvasName: string, pixelRatio?: number): Promise<void> {
+export async function exportPNG(
+  element: HTMLElement,
+  canvasName: string,
+  pixelRatio?: number,
+  backgroundColor?: string | null
+): Promise<void> {
   const { toPng } = await import('html-to-image')
   const dataUrl = await toPng(element, {
     pixelRatio: pixelRatio || 2,
-    backgroundColor: '#f8fafc',
+    ...(backgroundColor === null ? {} : { backgroundColor: backgroundColor || '#f8fafc' }),
     filter: function (node) {
       if (node instanceof HTMLElement && node.hasAttribute('data-export-ignore')) {
         return false

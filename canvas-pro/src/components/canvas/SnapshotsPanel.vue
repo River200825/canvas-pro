@@ -42,8 +42,8 @@
           <button
             class="btn-icon-sm text-text-muted hover:text-primary-600"
             :aria-label="`恢复到 ${snapshot.name}`"
-            title="恢复此快照"
-            @click="restoreSnapshot(snapshot.id)"
+            title="恢复此快照（当前内容会自动备份）"
+            @click="askRestore(snapshot.id, snapshot.name)"
           >
             <RotateCcw class="h-4 w-4" />
           </button>
@@ -58,33 +58,55 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-if="restoreTarget"
+      title="恢复快照"
+      :message="`将恢复到「${restoreTarget.name}」。\n当前内容会自动备份为「恢复前」快照，可随时找回。`"
+      confirm-text="恢复"
+      @confirm="confirmRestore"
+      @cancel="restoreTarget = null"
+    />
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Camera, History, RotateCcw, Trash2, X } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
+import { useToast } from '@/composables/useToast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
 const canvasStore = useCanvasStore()
+const toast = useToast()
 const MAX_SNAPSHOTS = 20
 
 const snapshots = computed(() => canvasStore.currentCanvas?.snapshots ?? [])
+const restoreTarget = ref<{ id: string; name: string } | null>(null)
 
 function handleCreate(): void {
   canvasStore.createSnapshot()
+  toast.success('快照已创建')
 }
 
-function restoreSnapshot(id: string): void {
-  canvasStore.restoreSnapshot(id)
+function askRestore(id: string, name: string): void {
+  restoreTarget.value = { id, name }
+}
+
+function confirmRestore(): void {
+  if (!restoreTarget.value) return
+  canvasStore.restoreSnapshot(restoreTarget.value.id)
+  restoreTarget.value = null
+  toast.success('已恢复快照，之前的内容已自动备份')
 }
 
 function deleteSnapshot(id: string): void {
   canvasStore.deleteSnapshot(id)
+  toast.info('快照已删除')
 }
 
 function formatTime(ts: number): string {

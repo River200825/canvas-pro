@@ -1,20 +1,103 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { CanvasInstance, CanvasTemplate, CanvasSnapshot, StickyNote, ViewportState, CanvasMode } from '@/types'
+import type { CanvasInstance, CanvasTemplate, CanvasSnapshot, StickyNote, ViewportState, CanvasMode, CanvasBlock } from '@/types'
 import { getTemplateById, templates } from '@/templates'
 import { generateNoteId, createEmptyNote } from '@/types/note'
 import { useLocalStorage } from '@/composables/useLocalStorage'
 
 const STORAGE_KEY = 'canvas-pro:v1'
 const MAX_SNAPSHOTS = 20
+const MAX_UNDO_STEPS = 50
+
+/** localStorage 存储包装：带版本号，未来格式变更可迁移 */
+interface StoredPayload {
+  version: number
+  canvases: CanvasInstance[]
+}
+
+function wrapPayload(canvases: CanvasInstance[]): StoredPayload {
+  return { version: 1, canvases }
+}
+
+function unwrapPayload(parsed: unknown): CanvasInstance[] {
+  // v1 包装格式
+  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as StoredPayload).canvases)) {
+    return (parsed as StoredPayload).canvases
+  }
+  // 旧版裸数组格式（兼容迁移）
+  if (Array.isArray(parsed)) return parsed
+  return []
+}
 
 export const useCanvasStore = defineStore('canvas', () => {
-  const { load, save } = useLocalStorage<CanvasInstance[]>(STORAGE_KEY, [])
+  const { load, save } = useLocalStorage<StoredPayload>(STORAGE_KEY, wrapPayload([]))
 
   const canvases = ref<CanvasInstance[]>([])
   const currentCanvasId = ref<string | null>(null)
   const template = ref<CanvasTemplate>(templates[0])
   const selectedNoteId = ref<string | null>(null)
+
+  /** 新建便利贴待自动进入编辑态（B3） */
+  const pendingEditNoteId = ref<string | null>(null)
+
+  /** 撤销/重做栈：仅存当前画布的 notes/blocks 深拷贝，不持久化 */
+  interface UndoEntry {
+    notes: StickyNote[]
+    blocks: CanvasBlock[]
+  }
+  const undoStack = ref<UndoEntry[]>([])
+  const redoStack = ref<UndoEntry[]>([])
+
+  const canUndo = computed(() => undoStack.value.length > 0)
+  const canRedo = computed(() => redoStack.value.length > 0)
+
+  function cloneCurrent(): UndoEntry | null {
+    const canvas = currentCanvas.value
+    if (!canvas) return null
+    return {
+      notes: JSON.parse(JSON.stringify(canvas.notes)) as StickyNote[],
+      blocks: JSON.parse(JSON.stringify(canvas.blocks)) as CanvasBlock[],
+    }
+  }
+
+  /** 在任何 notes/blocks 变更前调用 */
+  function pushUndo(): void {
+    const entry = cloneCurrent()
+    if (!entry) return
+    undoStack.value.push(entry)
+    if (undoStack.value.length > MAX_UNDO_STEPS) undoStack.value.shift()
+    redoStack.value = []
+  }
+
+  function clearHistory(): void {
+    undoStack.value = []
+    redoStack.value = []
+  }
+
+  function undo(): void {
+    const canvas = currentCanvas.value
+    const entry = undoStack.value.pop()
+    if (!canvas || !entry) return
+    const current = cloneCurrent()
+    if (current) redoStack.value.push(current)
+    canvas.notes = entry.notes
+    canvas.blocks = entry.blocks
+    canvas.updatedAt = Date.now()
+    if (canvas.notes.length === 0) selectedNoteId.value = null
+    persist()
+  }
+
+  function redo(): void {
+    const canvas = currentCanvas.value
+    const entry = redoStack.value.pop()
+    if (!canvas || !entry) return
+    const current = cloneCurrent()
+    if (current) undoStack.value.push(current)
+    canvas.notes = entry.notes
+    canvas.blocks = entry.blocks
+    canvas.updatedAt = Date.now()
+    persist()
+  }
 
   function selectNote(id: string | null) {
     selectedNoteId.value = id
@@ -41,16 +124,17 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function init() {
-    const stored = load()
+    const stored = unwrapPayload(load())
     if (stored.length > 0 && isValidCanvasArray(stored)) {
       canvases.value = stored
       currentCanvasId.value = stored[0].id
     } else {
       if (stored.length > 0) {
-        save([])
+        save(wrapPayload([]))
       }
       createCanvas()
     }
+    clearHistory()
   }
 
   const currentCanvas = computed<CanvasInstance | null>(() => {
@@ -88,6 +172,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     canvases.value.push(canvas)
     currentCanvasId.value = id
+    clearHistory()
     persist()
     return canvas
   }
@@ -96,6 +181,8 @@ export const useCanvasStore = defineStore('canvas', () => {
     const canvas = canvases.value.find(c => c.id === id)
     if (canvas) {
       currentCanvasId.value = id
+      clearHistory()
+      selectedNoteId.value = null
     }
   }
 
@@ -107,6 +194,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     if (currentCanvasId.value === id) {
       currentCanvasId.value = canvases.value[0]?.id ?? null
+      clearHistory()
       if (!currentCanvasId.value) {
         createCanvas()
       }
@@ -140,6 +228,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
     canvases.value.push(newCanvas)
     currentCanvasId.value = newCanvas.id
+    clearHistory()
     persist()
     return newCanvas
   }
@@ -157,15 +246,18 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function addNote(blockId: string | null, x?: number, y?: number, color?: StickyNote['color']): StickyNote {
     if (!currentCanvas.value) throw new Error('No active canvas')
+    pushUndo()
     const note = createEmptyNote(blockId, x, y, color)
     currentCanvas.value.notes.push(note)
     currentCanvas.value.updatedAt = Date.now()
+    pendingEditNoteId.value = note.id
     persist()
     return note
   }
 
   function updateNote(noteId: string, patches: Partial<StickyNote>) {
     if (!currentCanvas.value) return
+    pushUndo()
     const note = currentCanvas.value.notes.find((n: StickyNote) => n.id === noteId)
     if (note) {
       Object.assign(note, patches, { updatedAt: Date.now() })
@@ -176,8 +268,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function deleteNote(noteId: string) {
     if (!currentCanvas.value) return
+    pushUndo()
     const index = currentCanvas.value.notes.findIndex((n: StickyNote) => n.id === noteId)
     if (index !== -1) {
+      if (selectedNoteId.value === noteId) selectedNoteId.value = null
       currentCanvas.value.notes.splice(index, 1)
       currentCanvas.value.updatedAt = Date.now()
       persist()
@@ -186,6 +280,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function moveNote(noteId: string, targetBlockId: string | null, newOrder: number) {
     if (!currentCanvas.value) return
+    pushUndo()
     const note = currentCanvas.value.notes.find((n: StickyNote) => n.id === noteId)
     if (note) {
       note.blockId = targetBlockId
@@ -198,6 +293,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function reorderNotes(blockId: string, activeId: string, overId: string) {
     if (!currentCanvas.value) return
+    pushUndo()
     const blockNotes = currentCanvas.value.notes
       .filter((n: StickyNote) => n.blockId === blockId)
       .sort((a: StickyNote, b: StickyNote) => a.order - b.order)
@@ -219,6 +315,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function duplicateNote(noteId: string) {
     if (!currentCanvas.value) return
+    pushUndo()
     const source = currentCanvas.value.notes.find((n: StickyNote) => n.id === noteId)
     if (!source) return
 
@@ -260,11 +357,42 @@ export const useCanvasStore = defineStore('canvas', () => {
     const snapshot = currentCanvas.value.snapshots.find(s => s.id === snapshotId)
     if (!snapshot) return
 
+    // 恢复前：内存撤销栈 + 持久化备份快照，双保险
+    pushUndo()
+    const now = new Date()
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    createSnapshot(`恢复前 ${hh}:${mm}`)
+
     currentCanvas.value.notes = snapshot.notes.map((n: StickyNote) => ({ ...n, updatedAt: Date.now() }))
     currentCanvas.value.blocks = snapshot.blocks.map(b => ({ ...b }))
     currentCanvas.value.viewport = { ...snapshot.viewport }
     currentCanvas.value.updatedAt = Date.now()
+    selectedNoteId.value = null
     persist()
+  }
+
+  /** 批量填充示例内容（B4）：整批只算一步撤销 */
+  function fillExample(seedsByBlock: Record<string, { t?: string; c?: string }[]>): number {
+    if (!currentCanvas.value) return 0
+    pushUndo()
+    const palette: StickyNote['color'][] = ['yellow', 'blue', 'green', 'pink', 'orange']
+    let order = 0
+    let count = 0
+    for (const [blockId, seeds] of Object.entries(seedsByBlock)) {
+      for (const seed of seeds) {
+        const note = createEmptyNote(blockId)
+        note.title = seed.t ?? ''
+        note.content = seed.c ?? ''
+        note.order = order++
+        note.color = palette[count % palette.length]
+        currentCanvas.value.notes.push(note)
+        count++
+      }
+    }
+    currentCanvas.value.updatedAt = Date.now()
+    persist()
+    return count
   }
 
   function deleteSnapshot(snapshotId: string) {
@@ -282,9 +410,13 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function importCanvas(json: string): CanvasInstance {
-    const data = JSON.parse(json) as CanvasInstance
+    const data = JSON.parse(json) as Partial<CanvasInstance>
+    if (!data || !Array.isArray(data.notes) || !Array.isArray(data.blocks)) {
+      throw new Error('INVALID_CANVAS_JSON')
+    }
+    pushUndo()
     const newCanvas: CanvasInstance = {
-      ...data,
+      ...(data as CanvasInstance),
       id: `canvas_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name: `${data.name} (导入)`,
       notes: data.notes.map((n: StickyNote) => ({ ...n, id: generateNoteId(), createdAt: Date.now(), updatedAt: Date.now() })),
@@ -295,12 +427,13 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
     canvases.value.push(newCanvas)
     currentCanvasId.value = newCanvas.id
+    clearHistory()
     persist()
     return newCanvas
   }
 
   function persist() {
-    save(canvases.value)
+    save(wrapPayload(canvases.value))
   }
 
   /** Ctrl+Shift+S 显式保存 */
@@ -319,10 +452,17 @@ export const useCanvasStore = defineStore('canvas', () => {
     currentCanvas,
     currentTemplate,
     selectedNoteId,
+    pendingEditNoteId,
+    canUndo,
+    canRedo,
     init,
     selectNote,
     getSelectedNote,
     saveCanvas,
+    pushUndo,
+    undo,
+    redo,
+    fillExample,
     createCanvas,
     switchCanvas,
     deleteCanvas,

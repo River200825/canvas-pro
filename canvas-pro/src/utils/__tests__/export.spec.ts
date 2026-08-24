@@ -104,16 +104,18 @@ describe('exportMarkdown', () => {
 })
 
 describe('exportJSON', () => {
-  it('完整序列化画布', async () => {
+  it('完整序列化画布并携带版本号（A7）', async () => {
     const canvas = makeCanvas()
     exportJSON(canvas)
 
     expect(downloads).toHaveLength(1)
     expect(downloads[0].filename.endsWith('.json')).toBe(true)
-    const parsed = JSON.parse(await downloads[0].blob.text()) as CanvasInstance
+    const parsed = JSON.parse(await downloads[0].blob.text()) as CanvasInstance & { version: number; exportedAt: string }
     expect(parsed.id).toBe('c1')
     expect(parsed.notes).toHaveLength(3)
     expect(parsed.templateId).toBe('business-model-canvas')
+    expect(parsed.version).toBe(1)
+    expect(parsed.exportedAt).toBeTruthy()
   })
 })
 

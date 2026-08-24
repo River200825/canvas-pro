@@ -1,9 +1,11 @@
 import { ref, watch, shallowRef } from 'vue'
+import { useToast } from './useToast'
 
 export function useLocalStorage<T>(key: string, defaultValue: T) {
   const isClient = typeof window !== 'undefined'
   const stored = shallowRef<T>(defaultValue)
   const loaded = ref(false)
+  const toast = useToast()
 
   function load(): T {
     if (!isClient) return defaultValue
@@ -28,8 +30,10 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
     } catch (e) {
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         console.error('[useLocalStorage] Storage quota exceeded')
+        toast.errorThrottled('本地存储空间已满，最近的更改可能未被保存。请导出 JSON 备份后清理旧画布。')
       } else {
         console.error('[useLocalStorage] Failed to save:', e)
+        toast.errorThrottled('保存失败，请检查浏览器存储设置。')
       }
     }
   }

@@ -1,6 +1,10 @@
 <template>
-  <RouterView />
-  <KeyboardShortcutsTable v-if="uiStore.activeModal === 'shortcuts'" @close="uiStore.closeModal()" />
+  <ErrorBoundary>
+    <RouterView />
+    <UpdateBanner />
+    <AppToast />
+    <KeyboardShortcutsTable v-if="uiStore.activeModal === 'shortcuts'" @close="uiStore.closeModal()" />
+  </ErrorBoundary>
 </template>
 
 <script setup lang="ts">
@@ -9,6 +13,9 @@ import { useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useCanvasStore } from '@/stores'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+import ErrorBoundary from '@/components/ui/ErrorBoundary.vue'
+import UpdateBanner from '@/components/ui/UpdateBanner.vue'
+import AppToast from '@/components/ui/AppToast.vue'
 import KeyboardShortcutsTable from '@/components/guide/KeyboardShortcutsTable.vue'
 
 const router = useRouter()

@@ -16,6 +16,25 @@
 
     <div class="flex-1" />
 
+    <button
+      class="btn-icon text-text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none"
+      :disabled="!canvasStore.canUndo"
+      aria-label="撤销"
+      title="撤销 (Ctrl+Z)"
+      @click="canvasStore.undo()"
+    >
+      <Undo2 class="h-5 w-5" />
+    </button>
+    <button
+      class="btn-icon text-text-muted hover:text-text disabled:opacity-30 disabled:pointer-events-none"
+      :disabled="!canvasStore.canRedo"
+      aria-label="重做"
+      title="重做 (Ctrl+Y)"
+      @click="canvasStore.redo()"
+    >
+      <Redo2 class="h-5 w-5" />
+    </button>
+
     <ThemeToggle />
 
     <button
@@ -55,7 +74,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Download, History, Keyboard, Maximize2 } from 'lucide-vue-next'
+import { Download, History, Keyboard, Maximize2, Redo2, Undo2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import CanvasSwitcher from '@/components/canvas/CanvasSwitcher.vue'

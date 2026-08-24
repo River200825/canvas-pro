@@ -90,6 +90,24 @@
         </template>
       </div>
     </div>
+    <ConfirmDialog
+      v-if="confirmDelete"
+      danger
+      title="删除画布"
+      :message="`将永久删除「${canvasStore.currentCanvas?.name}」及其 ${canvasStore.currentCanvas?.notes.length ?? 0} 张便利贴，此操作无法撤销。`"
+      confirm-text="删除"
+      @confirm="confirmDeleteCanvas"
+      @cancel="confirmDelete = false"
+    />
+
+    <ConfirmDialog
+      v-if="importPreview"
+      title="导入画布"
+      :message="`将导入「${importPreview.name}」：${importPreview.notes} 张便利贴、${importPreview.blocks} 个区块。\n导入后会创建为新画布，不影响现有画布。`"
+      confirm-text="导入"
+      @confirm="confirmImport"
+      @cancel="importPreview = null"
+    />
   </div>
 </template>
 
@@ -97,15 +115,20 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Copy, FilePlus, Pencil, Trash2, Upload } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
+import { useToast } from '@/composables/useToast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import type { CanvasInstance } from '@/types'
 
 const canvasStore = useCanvasStore()
+const toast = useToast()
 
 const open = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const renamingId = ref<string | null>(null)
 const renameDraft = ref('')
+const confirmDelete = ref(false)
+const importPreview = ref<{ name: string; notes: number; blocks: number; json: string } | null>(null)
 
 function closeMenus(event: MouseEvent): void {
   if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
@@ -144,8 +167,16 @@ function duplicate(id: string): void {
 }
 
 function remove(id: string): void {
-  if (canvasStore.canvases.length > 1) {
+  if (canvasStore.canvases.length <= 1) return
+  confirmDelete.value = true
+}
+
+function confirmDeleteCanvas(): void {
+  const id = canvasStore.currentCanvasId
+  confirmDelete.value = false
+  if (id && canvasStore.canvases.length > 1) {
     canvasStore.deleteCanvas(id)
+    toast.info('画布已删除')
   }
 }
 
@@ -160,15 +191,36 @@ function handleImportFile(event: Event): void {
   const reader = new FileReader()
   reader.onload = () => {
     try {
-      const canvas = canvasStore.importCanvas(String(reader.result))
-      canvas.name = canvas.name.replace(' (导入)', '') || file.name.replace(/\.json$/i, '')
-      canvasStore.renameCanvas(canvas.id, canvas.name)
-      open.value = false
+      const parsed = JSON.parse(String(reader.result)) as Partial<CanvasInstance>
+      if (!parsed || !Array.isArray(parsed.notes) || !Array.isArray(parsed.blocks)) {
+        throw new Error('INVALID')
+      }
+      importPreview.value = {
+        name: parsed.name || file.name.replace(/\.json$/i, ''),
+        notes: parsed.notes.length,
+        blocks: parsed.blocks.length,
+        json: String(reader.result),
+      }
     } catch {
-      alert('导入失败：JSON 格式不正确或缺少必要字段')
+      toast.error('导入失败：JSON 格式不正确或缺少必要字段')
     }
   }
   reader.readAsText(file)
   input.value = ''
+}
+
+function confirmImport(): void {
+  if (!importPreview.value) return
+  try {
+    const canvas = canvasStore.importCanvas(importPreview.value.json)
+    const name = importPreview.value.name
+    if (name && !canvas.name.startsWith(name)) canvasStore.renameCanvas(canvas.id, name)
+    toast.success(`已导入「${canvas.name}」`)
+    open.value = false
+  } catch {
+    toast.error('导入失败：数据格式不正确')
+  } finally {
+    importPreview.value = null
+  }
 }
 </script>

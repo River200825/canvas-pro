@@ -2,6 +2,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
+import { useToast } from './useToast'
 
 /** Ctrl+C 复制的便利贴快照，模块级共享 */
 let clipboardNote: import('@/types/note').StickyNote | null = null
@@ -10,6 +11,7 @@ export function useKeyboardShortcuts() {
   const canvasStore = useCanvasStore()
   const uiStore = useUIStore()
   const route = useRoute()
+  const toast = useToast()
 
   const isMac = navigator.platform.toUpperCase().includes('MAC')
   const modKey = isMac ? '⌘' : 'Ctrl'
@@ -90,8 +92,15 @@ export function useKeyboardShortcuts() {
     { key: 'v', ctrl: true, editorOnly: true, description: '粘贴便利贴', action: pasteClipboard },
     { key: 's', ctrl: true, editorOnly: true, description: '创建快照', action: () => {
         canvasStore.createSnapshot()
+        toast.success('快照已创建')
       } },
-    { key: 's', ctrl: true, shift: true, editorOnly: true, description: '保存画布', action: () => canvasStore.saveCanvas() },
+    { key: 's', ctrl: true, shift: true, editorOnly: true, description: '保存画布', action: () => {
+        canvasStore.saveCanvas()
+        toast.success('画布已保存')
+      } },
+    { key: 'z', ctrl: true, editorOnly: true, description: '撤销', action: () => canvasStore.undo() },
+    { key: 'y', ctrl: true, editorOnly: true, description: '重做', action: () => canvasStore.redo() },
+    { key: 'z', ctrl: true, shift: true, editorOnly: true, description: '重做', action: () => canvasStore.redo() },
     { key: 'e', ctrl: true, editorOnly: true, description: '打开导出对话框', action: () => uiStore.openModal('export') },
     { key: 'n', ctrl: true, shift: true, editorOnly: true, description: '新建画布', action: () => canvasStore.createCanvas() },
     { key: 'd', ctrl: true, shift: true, editorOnly: true, description: '复制当前画布', action: () => {

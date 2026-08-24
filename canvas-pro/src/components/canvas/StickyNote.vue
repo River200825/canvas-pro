@@ -33,9 +33,11 @@
         ref="titleInputRef"
         v-model="editTitle"
         class="w-full text-sm font-semibold bg-transparent focus:outline-none text-text"
-        placeholder="标题..."
+        placeholder="输入标题..."
         aria-label="便利贴标题"
         @keydown="handleTitleKeydown"
+        @compositionstart="composing = true"
+        @compositionend="composing = false"
       />
       <div
         v-else
@@ -93,10 +95,12 @@
       ref="contentInputRef"
       v-model="editContent"
       class="w-full text-sm bg-transparent focus:outline-none resize-none text-text mt-1"
-      placeholder="内容..."
+      placeholder="输入内容..."
       rows="3"
       aria-label="便利贴内容"
       @keydown="handleContentKeydown"
+      @compositionstart="composing = true"
+      @compositionend="composing = false"
     />
     <div
       v-else
@@ -127,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { Copy, GripVertical, Lock, LockOpen, Palette, Trash2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { NOTE_COLORS, getNoteColor, type NoteColorId, type StickyNote as StickyNoteType } from '@/types/note'
@@ -143,10 +147,10 @@ const isEditing = ref(false)
 const editTitle = ref('')
 const editContent = ref('')
 const showColorPicker = ref(false)
+const composing = ref(false)
 const noteRootRef = ref<HTMLElement | null>(null)
 const titleInputRef = ref<HTMLInputElement | null>(null)
 const contentInputRef = ref<HTMLTextAreaElement | null>(null)
-
 const color = computed(() => getNoteColor(props.note.color))
 
 const isSelected = computed(() => canvasStore.selectedNoteId === props.note.id)
@@ -173,6 +177,7 @@ function startEdit(focusContent = false): void {
 // 焦点离开整张便利贴时才保存；标题→内容切换不中断编辑
 function handleFocusOut(event: FocusEvent): void {
   if (!isEditing.value) return
+  if (composing.value) return
   const next = event.relatedTarget as Node | null
   if (next && noteRootRef.value?.contains(next)) return
   saveEdit()
@@ -191,7 +196,13 @@ function cancelEdit(): void {
   isEditing.value = false
 }
 
+// A4：中文输入法组合期间，Enter/Esc 属于选词操作，不触发提交/取消
+function isComposingEvent(event: KeyboardEvent): boolean {
+  return composing.value || event.isComposing
+}
+
 function handleTitleKeydown(event: KeyboardEvent): void {
+  if (isComposingEvent(event)) return
   if (event.key === 'Enter') {
     event.preventDefault()
     titleInputRef.value?.blur()
@@ -201,6 +212,7 @@ function handleTitleKeydown(event: KeyboardEvent): void {
 }
 
 function handleContentKeydown(event: KeyboardEvent): void {
+  if (isComposingEvent(event)) return
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault()
     saveEdit()
@@ -208,6 +220,16 @@ function handleContentKeydown(event: KeyboardEvent): void {
     cancelEdit()
   }
 }
+
+// B3：由 + 按钮 / 虚线区 / N 键新建的便利贴自动进入编辑态
+onMounted(() => {
+  if (canvasStore.pendingEditNoteId === props.note.id) {
+    canvasStore.pendingEditNoteId = null
+    if (!props.presentationMode && !props.note.locked) {
+      startEdit()
+    }
+  }
+})
 
 function deleteNote(): void {
   if (props.note.locked) return

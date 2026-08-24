@@ -1,5 +1,18 @@
 <template>
-  <div class="h-screen w-screen overflow-hidden bg-canvas-bg">
+  <!-- 画布不存在（A5） -->
+  <div v-if="notFound" class="h-screen w-screen bg-canvas-bg flex items-center justify-center p-4">
+    <div class="text-center">
+      <SearchX class="w-12 h-12 mx-auto text-text-muted mb-4" />
+      <p class="text-lg font-semibold text-text mb-2">画布不存在</p>
+      <p class="text-sm text-text-muted mb-6">链接指向的画布可能已被删除，或 ID 不正确</p>
+      <div class="flex items-center justify-center gap-2">
+        <button class="btn-secondary" @click="router.push('/')">返回首页</button>
+        <button class="btn-primary" @click="router.push('/canvas/new')">新建画布</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-else class="h-screen w-screen overflow-hidden bg-canvas-bg">
     <Toolbar />
 
     <div
@@ -25,8 +38,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { SearchX } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import Toolbar from '@/components/toolbar/Toolbar.vue'
@@ -38,6 +52,22 @@ const route = useRoute()
 const router = useRouter()
 const canvasStore = useCanvasStore()
 const uiStore = useUIStore()
+
+/** 路由指向的画布不存在（A5） */
+const notFound = computed(() => {
+  if (route.name !== 'CanvasEditor') return false
+  const id = route.params.id as string
+  return !canvasStore.canvases.some(c => c.id === id)
+})
+
+// 浏览器标签标题跟随画布名（B7）
+watch(
+  () => canvasStore.currentCanvas?.name,
+  name => {
+    document.title = name ? `${name} · CanvasPro` : 'CanvasPro - 个人商业画布'
+  },
+  { immediate: true }
+)
 
 // PRD：每 30 分钟自动创建快照
 const AUTO_SNAPSHOT_INTERVAL = 30 * 60 * 1000

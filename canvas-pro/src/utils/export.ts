@@ -21,7 +21,13 @@ function timestamp(): string {
 }
 
 export function exportJSON(canvas: CanvasInstance): void {
-  const json = JSON.stringify(canvas, null, 2)
+  // A7：带版本号导出，导入端可据此做兼容迁移
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    ...canvas,
+  }
+  const json = JSON.stringify(payload, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
   downloadBlob(blob, canvas.name + '_' + timestamp() + '.json')
 }

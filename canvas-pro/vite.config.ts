@@ -10,7 +10,7 @@ export default defineConfig({
     vue(),
     unocss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'icons.svg'],
       manifest: {
         name: 'CanvasPro - 个人商业画布',

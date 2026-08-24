@@ -196,4 +196,108 @@ describe('canvas store', () => {
     store.selectNote(null)
     expect(store.getSelectedNote()).toBeNull()
   })
+
+  describe('撤销 / 重做（A1）', () => {
+    it('删除可 Ctrl+Z 撤销、Ctrl+Y 重做', () => {
+      const store = useCanvasStore()
+      store.init()
+      const note = store.addNote(null)
+      store.updateNote(note.id, { title: '重要' })
+      expect(store.canUndo).toBe(true)
+
+      store.deleteNote(note.id)
+      expect(store.currentCanvas!.notes).toHaveLength(0)
+
+      store.undo()
+      expect(store.currentCanvas!.notes).toHaveLength(1)
+      expect(store.currentCanvas!.notes[0].title).toBe('重要')
+
+      store.redo()
+      expect(store.currentCanvas!.notes).toHaveLength(0)
+    })
+
+    it('连续编辑产生多步撤销，上限 50 步', () => {
+      const store = useCanvasStore()
+      store.init()
+      const note = store.addNote(null)
+      for (let i = 0; i < 60; i++) {
+        store.updateNote(note.id, { title: `v${i}` })
+      }
+      // 60 次修改 + 1 次 addNote，栈上限 50（最旧的入栈记录被淘汰）
+      expect(store.canUndo).toBe(true)
+      for (let i = 0; i < 50; i++) store.undo()
+      expect(store.canUndo).toBe(false)
+      // 退到栈底：仍剩 1 张便利贴（addNote 那步已被挤出栈）
+      expect(store.currentCanvas!.notes).toHaveLength(1)
+      expect(store.currentCanvas!.notes[0].title).toBe('v9')
+    })
+
+    it('切换画布后撤销栈清空', () => {
+      const store = useCanvasStore()
+      store.init()
+      store.addNote(null)
+      expect(store.canUndo).toBe(true)
+      const second = store.createCanvas('另一张')
+      expect(store.canUndo).toBe(false)
+      store.switchCanvas(store.canvases[0].id)
+      expect(store.canUndo).toBe(false)
+      void second
+    })
+
+    it('恢复快照前自动创建「恢复前」备份快照', () => {
+      const store = useCanvasStore()
+      store.init()
+      store.addNote(null, 1, 1)
+      store.createSnapshot('检查点')
+      store.addNote(null, 2, 2)
+      expect(store.currentCanvas!.notes).toHaveLength(2)
+
+      const snapshotId = store.currentCanvas!.snapshots[0].id
+      store.restoreSnapshot(snapshotId)
+
+      expect(store.currentCanvas!.notes).toHaveLength(1) // 回到检查点状态
+      const backup = store.currentCanvas!.snapshots.find(s => s.name.startsWith('恢复前'))
+      expect(backup).toBeTruthy()
+      expect(backup!.notes).toHaveLength(2) // 备份的是恢复前状态
+      // 且可通过撤销回退恢复操作
+      expect(store.canUndo).toBe(true)
+      store.undo()
+      expect(store.currentCanvas!.notes).toHaveLength(2)
+    })
+
+    it('fillExample 批量填充只算一步撤销', () => {
+      const store = useCanvasStore()
+      store.init()
+      store.fillExample({
+        'key-partners': [{ t: '伙伴', c: '内容' }],
+        'value-propositions': [{ t: '价值', c: '卖点' }],
+      })
+      expect(store.currentCanvas!.notes).toHaveLength(2)
+
+      store.undo()
+      expect(store.currentCanvas!.notes).toHaveLength(0)
+    })
+  })
+
+  describe('数据版本号（A7）', () => {
+    it('存储格式为带版本的包装对象，旧版裸数组可迁移', () => {
+      const store = useCanvasStore()
+      store.init()
+      store.createCanvas('版本验证')
+      const raw = JSON.parse(localStorage.getItem('canvas-pro:v1')!)
+      expect(raw.version).toBe(1)
+      expect(Array.isArray(raw.canvases)).toBe(true)
+      expect(raw.canvases.some((c: { name: string }) => c.name === '版本验证')).toBe(true)
+
+      // 旧版裸数组格式迁移
+      localStorage.setItem(
+        'canvas-pro:v1',
+        JSON.stringify([{ id: 'legacy', templateId: 'swot', name: '旧数据', mode: 'grid', notes: [], blocks: [], viewport: { x: 0, y: 0, scale: 1 }, createdAt: 0, updatedAt: 0, snapshots: [] }])
+      )
+      setActivePinia(createPinia())
+      const store2 = useCanvasStore()
+      store2.init()
+      expect(store2.canvases.some(c => c.name === '旧数据')).toBe(true)
+    })
+  })
 })

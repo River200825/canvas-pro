@@ -106,6 +106,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Download, Loader2, X } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useSettingsStore } from '@/stores/settings'
+import { useToast } from '@/composables/useToast'
 import { exportJSON, exportMarkdown, exportPNG } from '@/utils/export'
 import { exportPDF, type PaperSize, type Orientation } from '@/utils/export-pdf'
 
@@ -117,6 +118,7 @@ const emit = defineEmits<{
 
 const canvasStore = useCanvasStore()
 const settings = useSettingsStore()
+const toast = useToast()
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'png', label: 'PNG 图片' },
@@ -124,6 +126,13 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'markdown', label: 'Markdown' },
   { id: 'json', label: 'JSON' },
 ]
+
+const LABELS: Record<TabId, string> = {
+  png: 'PNG 图片',
+  pdf: 'PDF 文档',
+  markdown: 'Markdown 文件',
+  json: 'JSON 文件',
+}
 
 const activeTab = ref<TabId>('png')
 const transparentBg = ref(false)
@@ -187,9 +196,11 @@ async function handleExport(): Promise<void> {
         exportJSON(canvas)
         break
     }
+    toast.success(`已导出 ${LABELS[activeTab.value]}`)
     emit('close')
   } catch (e) {
     error.value = e instanceof Error ? e.message : '导出失败，请重试'
+    toast.error('导出失败，请重试')
   } finally {
     exporting.value = false
   }

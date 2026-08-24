@@ -28,6 +28,12 @@ npm run dev
 # 类型检查
 npm run typecheck
 
+# 单元测试（83 项，覆盖率 86%+）
+npm run test
+
+# 测试覆盖率报告
+npm run test:coverage
+
 # 生产构建（输出到 dist/）
 npm run build
 
@@ -87,3 +93,4 @@ src/
 
 - [用户手册](docs/usage.md)：功能说明、快捷键表、导出说明
 - [开发指南](docs/development.md)：架构设计、如何新增模板、自定义颜色
+- [验收清单](docs/acceptance.md)：AC-01~18 验收状态与偏差记录

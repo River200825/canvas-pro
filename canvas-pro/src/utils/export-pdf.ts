@@ -18,7 +18,8 @@ const MARGIN_TOP_FIRST = 64
 const MARGIN_TOP = 36
 const MARGIN_BOTTOM = 36
 
-function sanitizeWinAnsi(text: string): string {
+/** 将超出 WinAnsi 编码范围的字符替换为 ?（pdf-lib 标准字体限制） */
+export function sanitizeWinAnsi(text: string): string {
   return text
     .split('')
     .map(ch => {

@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         working-directory: canvas-pro
         run: npm run typecheck
+      - name: Test
+        working-directory: canvas-pro
+        run: npm run test
       - name: Build
         working-directory: canvas-pro
         run: npm run build

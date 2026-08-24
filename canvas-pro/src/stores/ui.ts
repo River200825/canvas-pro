@@ -27,11 +27,11 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function zoomIn() {
-    viewport.value.scale = Math.min(viewport.value.scale * 1.2, 5)
+    viewport.value.scale = Math.min(Math.max(viewport.value.scale * 1.2, 0.1), 5)
   }
 
   function zoomOut() {
-    viewport.value.scale = Math.max(viewport.value.scale / 1.2, 0.1)
+    viewport.value.scale = Math.min(Math.max(viewport.value.scale / 1.2, 0.1), 5)
   }
 
   function togglePresentationMode() {

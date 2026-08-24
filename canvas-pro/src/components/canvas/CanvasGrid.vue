@@ -17,6 +17,29 @@
         width: '100%',
       }"
     >
+      <!-- 空画布引导（B2/B4） -->
+      <div
+        v-if="showEmptyGuide"
+        class="absolute inset-x-6 top-24 flex justify-center pointer-events-none"
+      >
+        <div class="card px-8 py-7 text-center shadow-xl max-w-md pointer-events-auto">
+          <Sparkles class="w-8 h-8 mx-auto text-primary-500 mb-3" />
+          <p class="font-semibold text-text mb-1.5">从一张便利贴开始</p>
+          <p class="text-sm text-text-muted mb-5 leading-relaxed">
+            把想法写进各个区块，随时拖拽调整。<br />
+            不确定怎么填？先看看 Uber 的真实案例。
+          </p>
+          <div class="flex items-center justify-center gap-2">
+            <button class="btn-primary gap-1.5" @click="addFirstNote">
+              <Plus class="w-4 h-4" /> 添加第一张
+            </button>
+            <button class="btn-secondary gap-1.5" @click="loadUberExample">
+              <Lightbulb class="w-4 h-4" /> 载入示例
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
         class="tpl-grid"
         :style="gridStyle ?? { gridTemplateColumns: 'repeat(3, minmax(240px, 1fr))', maxWidth: '1200px', margin: '0 auto', display: 'grid', gap: '1rem' }"
@@ -39,17 +62,21 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { Lightbulb, Plus, Sparkles } from 'lucide-vue-next'
 import CanvasBlock from './CanvasBlock.vue'
 import type { NoteMovedPayload } from './CanvasBlock.vue'
 import { useCanvasStore } from '@/stores'
 import { getGridStyle } from '@/templates/layout'
+import { useToast } from '@/composables/useToast'
+import { EXAMPLE_CONTENT } from '@/data/examples'
 import type { StickyNote } from '@/types/note'
 
-defineProps<{
+const props = defineProps<{
   presentationMode?: boolean
 }>()
 
 const canvasStore = useCanvasStore()
+const toast = useToast()
 
 const containerRef = ref<HTMLElement | null>(null)
 const isPanning = ref(false)
@@ -58,6 +85,20 @@ const panStart = ref({ x: 0, y: 0 })
 const viewportStart = ref({ x: 0, y: 0 })
 
 const viewport = computed(() => canvasStore.currentCanvas?.viewport ?? { x: 0, y: 0, scale: 1 })
+
+const showEmptyGuide = computed(
+  () => !props.presentationMode && !!canvasStore.currentCanvas && canvasStore.currentCanvas.notes.length === 0
+)
+
+function addFirstNote(): void {
+  const firstBlock = blocks.value[0]
+  canvasStore.addNote(firstBlock?.id ?? null)
+}
+
+function loadUberExample(): void {
+  const count = canvasStore.fillExample(EXAMPLE_CONTENT.uber)
+  if (count > 0) toast.success(`已载入 Uber 案例的 ${count} 条内容，Ctrl+Z 可撤销`)
+}
 
 const blocks = computed(() => {
   const t = canvasStore.currentTemplate

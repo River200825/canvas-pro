@@ -13,7 +13,8 @@ html, body, #app {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-canvas-bg);
@@ -112,4 +113,40 @@ button:disabled {
 }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--color-gray-500);
+}
+
+/* 打印样式（B7）：Ctrl+P 直接输出干净的画布 */
+@media print {
+  header,
+  nav,
+  aside,
+  button,
+  [data-export-ignore],
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #app {
+    height: auto;
+    background: white !important;
+  }
+
+  .tpl-grid {
+    transform: none !important;
+    grid-template-columns: repeat(10, minmax(0, 1fr)) !important;
+  }
+
+  .sticky-note,
+  [class*='shadow-'] {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }

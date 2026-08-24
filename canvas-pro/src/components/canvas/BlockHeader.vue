@@ -11,6 +11,15 @@
 
     <h3 class="font-semibold text-sm truncate flex-1" :style="titleStyle">{{ block.title }}</h3>
 
+    <span
+      v-if="block.hint"
+      class="shrink-0 p-0.5 rounded-full text-text-muted/60 hover:text-primary-600 transition-colors cursor-help"
+      :title="block.hint"
+      aria-label="区块说明"
+    >
+      <Info class="h-3.5 w-3.5" />
+    </span>
+
     <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300">
       {{ noteCount }}
     </span>
@@ -29,7 +38,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ChevronDown, Plus } from 'lucide-vue-next'
+import { ChevronDown, Info, Plus } from 'lucide-vue-next'
 import type { CanvasBlock } from '@/types'
 
 const props = defineProps<{

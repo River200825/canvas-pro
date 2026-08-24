@@ -16,6 +16,8 @@ export interface CanvasBlock {
   widthPercent: number
   /** 传统布局中的 grid-template-areas 区域名（如 BMC 的 partners/value/costs） */
   area?: string
+  /** 区块引导提示：告诉用户这个区块该填什么（B1） */
+  hint?: string
   x?: number
   y?: number
   width?: number

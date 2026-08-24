@@ -153,7 +153,8 @@ function skipGuide(): void {
 
 function completeGuide(): void {
   localStorage.setItem('guideShown', 'true')
-  router.push('/canvas/new?template=business-model-canvas')
+  // B6：回到首页模板区，由用户自选模板开始
+  router.push('/')
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -164,6 +165,9 @@ function handleKeydown(event: KeyboardEvent): void {
   else if (event.key === 'Escape') skipGuide()
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+  document.title = '使用教程 · CanvasPro'
+})
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>

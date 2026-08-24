@@ -25,7 +25,7 @@
       </div>
     </header>
 
-    <HeroSection @create="createCanvas()" @guide="router.push('/guide')" />
+    <HeroSection @create="createCanvas()" @guide="router.push('/guide')" @examples="router.push('/examples')" />
     <TemplateGallery @select="(id: string) => createCanvas(id)" />
     <RecentCanvases @open="(id: string) => router.push(`/canvas/${id}`)" />
     <FeatureHighlights />
@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { PencilLine } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
@@ -50,6 +50,10 @@ import FeatureHighlights from '@/components/home/FeatureHighlights.vue'
 
 const router = useRouter()
 const canvasStore = useCanvasStore()
+
+onMounted(() => {
+  document.title = 'CanvasPro - 把创业想法理成一张清晰的商业模式图'
+})
 
 /** 最近更新的画布，供「我的画布」一键继续 */
 const latestCanvas = computed(() => {

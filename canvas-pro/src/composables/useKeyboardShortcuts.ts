@@ -1,65 +1,147 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
+
+/** Ctrl+C 复制的便利贴快照，模块级共享 */
+let clipboardNote: import('@/types/note').StickyNote | null = null
 
 export function useKeyboardShortcuts() {
   const canvasStore = useCanvasStore()
   const uiStore = useUIStore()
+  const route = useRoute()
 
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isMac = navigator.platform.toUpperCase().includes('MAC')
   const modKey = isMac ? '⌘' : 'Ctrl'
 
-  const shortcuts = [
-    { key: 'n', meta: false, ctrl: false, shift: false, alt: false, description: '新建便利贴', action: () => { /* handled in editor */ } },
-    { key: 'Delete', meta: false, ctrl: false, shift: false, alt: false, description: '删除选中', action: () => { /* handled in editor */ } },
-    { key: 'Backspace', meta: false, ctrl: false, shift: false, alt: false, description: '删除选中', action: () => { /* handled in editor */ } },
-    { key: 's', meta: true, ctrl: true, shift: false, alt: false, description: '创建快照', action: () => canvasStore.createSnapshot() },
-    { key: 's', meta: true, ctrl: true, shift: true, alt: false, description: '保存画布', action: () => { /* handled in editor */ } },
-    { key: 'e', meta: true, ctrl: true, shift: false, alt: false, description: '打开导出', action: () => uiStore.openModal('export') },
-    { key: 'f', meta: false, ctrl: false, shift: false, alt: false, description: '全屏演示', action: () => uiStore.togglePresentationMode() },
-    { key: '?', meta: false, ctrl: false, shift: true, alt: false, description: '快捷键帮助', action: () => uiStore.openModal('shortcuts') },
-    { key: '/', meta: false, ctrl: false, shift: true, alt: false, description: '快捷键帮助', action: () => uiStore.openModal('shortcuts') },
-    { key: 'Escape', meta: false, ctrl: false, shift: false, alt: false, description: '关闭弹窗/退出演示', action: () => { uiStore.closeModal(); if (uiStore.presentationMode) uiStore.setPresentationMode(false) } },
-    { key: '0', meta: true, ctrl: true, shift: false, alt: false, description: '重置视图 (100%)', action: () => uiStore.resetViewport() },
-    { key: '=', meta: true, ctrl: true, shift: false, alt: false, description: '放大', action: () => uiStore.zoomIn() },
-    { key: '-', meta: true, ctrl: true, shift: false, alt: false, description: '缩小', action: () => uiStore.zoomOut() },
+  interface ShortcutDef {
+    key: string
+    ctrl?: boolean
+    shift?: boolean
+    /** 仅在编辑器路由内生效 */
+    editorOnly?: boolean
+    description: string
+    action: () => void
+  }
+
+  function switchCanvasByStep(step: 1 | -1): void {
+    const list = canvasStore.canvases
+    if (list.length < 2 || !canvasStore.currentCanvasId) return
+    const index = list.findIndex(c => c.id === canvasStore.currentCanvasId)
+    const next = (index + step + list.length) % list.length
+    canvasStore.switchCanvas(list[next].id)
+  }
+
+  function addQuickNote(): void {
+    const canvas = canvasStore.currentCanvas
+    if (!canvas) return
+    const firstBlock = [...canvas.blocks].sort((a, b) => a.order - b.order)[0]
+    const note = canvasStore.addNote(firstBlock?.id ?? null)
+    canvasStore.selectNote(note.id)
+  }
+
+  function deleteSelected(): void {
+    if (canvasStore.selectedNoteId && !canvasStore.getSelectedNote()?.locked) {
+      canvasStore.deleteNote(canvasStore.selectedNoteId)
+      canvasStore.selectNote(null)
+    }
+  }
+
+  function copySelected(): void {
+    const note = canvasStore.getSelectedNote()
+    if (note) clipboardNote = { ...note }
+  }
+
+  function pasteClipboard(): void {
+    if (!clipboardNote || !canvasStore.currentCanvas) return
+    const note = canvasStore.addNote(clipboardNote.blockId, undefined, undefined, clipboardNote.color)
+    canvasStore.updateNote(note.id, {
+      title: clipboardNote.title,
+      content: clipboardNote.content,
+      width: clipboardNote.width,
+      height: clipboardNote.height,
+    })
+  }
+
+  function zoomCanvas(factor: number): void {
+    const vp = canvasStore.currentCanvas?.viewport
+    if (!vp) return
+    canvasStore.setViewport({
+      scale: Math.min(Math.max(vp.scale * factor, 0.25), 3),
+    })
+  }
+
+  function resetZoom(): void {
+    canvasStore.setViewport({ x: 0, y: 0, scale: 1 })
+  }
+
+  const shortcuts: ShortcutDef[] = [
+    // —— 全局 ——
+    { key: 'Escape', description: '关闭弹窗 / 退出演示', action: () => {
+        uiStore.closeModal()
+        if (uiStore.presentationMode) uiStore.setPresentationMode(false)
+      } },
+    { key: '?', shift: true, description: '显示快捷键帮助', action: () => uiStore.openModal('shortcuts') },
+    // —— 编辑器内 ——
+    { key: 'n', editorOnly: true, description: '新建便利贴', action: addQuickNote },
+    { key: 'Delete', editorOnly: true, description: '删除选中便利贴', action: deleteSelected },
+    { key: 'Backspace', editorOnly: true, description: '删除选中便利贴', action: deleteSelected },
+    { key: 'c', ctrl: true, editorOnly: true, description: '复制选中便利贴', action: copySelected },
+    { key: 'v', ctrl: true, editorOnly: true, description: '粘贴便利贴', action: pasteClipboard },
+    { key: 's', ctrl: true, editorOnly: true, description: '创建快照', action: () => {
+        canvasStore.createSnapshot()
+      } },
+    { key: 's', ctrl: true, shift: true, editorOnly: true, description: '保存画布', action: () => canvasStore.saveCanvas() },
+    { key: 'e', ctrl: true, editorOnly: true, description: '打开导出对话框', action: () => uiStore.openModal('export') },
+    { key: 'n', ctrl: true, shift: true, editorOnly: true, description: '新建画布', action: () => canvasStore.createCanvas() },
+    { key: 'd', ctrl: true, shift: true, editorOnly: true, description: '复制当前画布', action: () => {
+        const id = canvasStore.currentCanvasId
+        if (id) canvasStore.duplicateCanvas(id)
+      } },
+    { key: 'f', editorOnly: true, description: '切换演示模式', action: () => uiStore.togglePresentationMode() },
+    { key: '0', ctrl: true, editorOnly: true, description: '重置视图 (100%)', action: resetZoom },
+    { key: '=', ctrl: true, editorOnly: true, description: '放大', action: () => zoomCanvas(1.2) },
+    { key: '+', ctrl: true, editorOnly: true, description: '放大', action: () => zoomCanvas(1.2) },
+    { key: '-', ctrl: true, editorOnly: true, description: '缩小', action: () => zoomCanvas(1 / 1.2) },
+    { key: 'ArrowLeft', editorOnly: true, description: '演示模式：上一画布', action: () => {
+        if (uiStore.presentationMode) switchCanvasByStep(-1)
+      } },
+    { key: 'ArrowRight', editorOnly: true, description: '演示模式：下一画布', action: () => {
+        if (uiStore.presentationMode) switchCanvasByStep(1)
+      } },
   ]
 
-  function matchesShortcut(event: KeyboardEvent, shortcut: typeof shortcuts[0]): boolean {
-    if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) return false
-    if (shortcut.meta && !event.metaKey && !event.ctrlKey) return false
-    if (shortcut.ctrl && !event.ctrlKey && !event.metaKey) return false
-    if (shortcut.shift !== event.shiftKey) return false
-    if (shortcut.alt !== event.altKey) return false
+  function matches(event: KeyboardEvent, s: ShortcutDef): boolean {
+    if (event.key.toLowerCase() !== s.key.toLowerCase()) return false
+    if (s.ctrl && !(event.ctrlKey || event.metaKey)) return false
+    if (!s.ctrl && s.key !== 'Delete' && s.key !== 'Backspace' && s.key !== 'ArrowLeft' && s.key !== 'ArrowRight' && (event.ctrlKey || event.metaKey)) return false
+    if ((s.shift ?? false) !== event.shiftKey) return false
     return true
   }
 
   function isInputFocused(): boolean {
     const active = document.activeElement
-    return active instanceof HTMLInputElement ||
+    return (
+      active instanceof HTMLInputElement ||
       active instanceof HTMLTextAreaElement ||
-      (active as HTMLElement)?.isContentEditable === true
+      (active as HTMLElement | null)?.isContentEditable === true
+    )
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
+  function handleKeyDown(event: KeyboardEvent): void {
     if (isInputFocused() && event.key !== 'Escape') return
-
-    for (const shortcut of shortcuts) {
-      if (matchesShortcut(event, shortcut)) {
+    for (const s of shortcuts) {
+      if (s.editorOnly && !route.path.startsWith('/canvas')) continue
+      if (matches(event, s)) {
         event.preventDefault()
-        shortcut.action()
-        break
+        s.action()
+        return
       }
     }
   }
 
-  onMounted(() => {
-    window.addEventListener('keydown', handleKeyDown)
-  })
+  onMounted(() => window.addEventListener('keydown', handleKeyDown))
+  onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
 
-  onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeyDown)
-  })
-
-  return { shortcuts, modKey }
+  return { shortcuts: shortcuts.map(({ key, ctrl, shift, description }) => ({ key, ctrl, shift, description })), modKey }
 }

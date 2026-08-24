@@ -2,7 +2,7 @@
   <div
     ref="containerRef"
     class="relative h-full w-full overflow-hidden bg-canvas-bg"
-    :class="isPanning ? 'cursor-grabbing select-none' : 'cursor-default'"
+    :class="isPanning ? 'cursor-grabbing select-none' : spaceHeld ? 'cursor-grab' : 'cursor-default'"
     @pointerdown="handlePointerDown"
     @pointermove="handlePointerMove"
     @pointerup="handlePointerUp"
@@ -53,6 +53,7 @@ const canvasStore = useCanvasStore()
 
 const containerRef = ref<HTMLElement | null>(null)
 const isPanning = ref(false)
+const spaceHeld = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const viewportStart = ref({ x: 0, y: 0 })
 
@@ -109,7 +110,12 @@ function handleWheel(event: WheelEvent): void {
 function handlePointerDown(event: PointerEvent): void {
   if (event.button !== 0) return
   const target = event.target as HTMLElement
-  if (target.closest('.sticky-note, button, input, textarea, [contenteditable]')) return
+  const onInteractive = !!target.closest('.sticky-note, button, input, textarea, [contenteditable]')
+
+  if (!spaceHeld.value) {
+    if (onInteractive) return
+    canvasStore.selectNote(null)
+  }
 
   isPanning.value = true
   panStart.value = { x: event.clientX, y: event.clientY }
@@ -149,12 +155,33 @@ function handleNoteMoved(payload: NoteMovedPayload): void {
   canvasStore.moveNote(payload.noteId, payload.targetBlockId, targetCount)
 }
 
+// 空格按住 → 任意位置拖拽平移（输入框内除外）
+function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  return !!el?.closest?.('input, textarea, [contenteditable]')
+}
+
+function handleSpaceKeyDown(event: KeyboardEvent): void {
+  if (event.code !== 'Space') return
+  if (isTypingTarget(event.target)) return
+  event.preventDefault()
+  spaceHeld.value = true
+}
+
+function handleSpaceKeyUp(event: KeyboardEvent): void {
+  if (event.code === 'Space') spaceHeld.value = false
+}
+
 onMounted(() => {
   containerRef.value?.addEventListener('wheel', handleWheel, { passive: false })
+  window.addEventListener('keydown', handleSpaceKeyDown)
+  window.addEventListener('keyup', handleSpaceKeyUp)
 })
 
 onUnmounted(() => {
   containerRef.value?.removeEventListener('wheel', handleWheel)
+  window.removeEventListener('keydown', handleSpaceKeyDown)
+  window.removeEventListener('keyup', handleSpaceKeyUp)
 })
 </script>
 

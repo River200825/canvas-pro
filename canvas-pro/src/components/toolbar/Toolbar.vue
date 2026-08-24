@@ -16,6 +16,8 @@
 
     <div class="flex-1" />
 
+    <ThemeToggle />
+
     <button
       class="btn-icon text-text-muted hover:text-text"
       :class="{ 'text-primary-600': uiStore.activeModal === 'snapshots' }"
@@ -57,6 +59,7 @@ import { Download, History, Keyboard, Maximize2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import CanvasSwitcher from '@/components/canvas/CanvasSwitcher.vue'
+import ThemeToggle from './ThemeToggle.vue'
 
 const router = useRouter()
 const canvasStore = useCanvasStore()

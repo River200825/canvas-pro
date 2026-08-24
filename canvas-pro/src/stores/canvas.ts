@@ -14,6 +14,16 @@ export const useCanvasStore = defineStore('canvas', () => {
   const canvases = ref<CanvasInstance[]>([])
   const currentCanvasId = ref<string | null>(null)
   const template = ref<CanvasTemplate>(templates[0])
+  const selectedNoteId = ref<string | null>(null)
+
+  function selectNote(id: string | null) {
+    selectedNoteId.value = id
+  }
+
+  function getSelectedNote(): StickyNote | null {
+    if (!selectedNoteId.value || !currentCanvas.value) return null
+    return currentCanvas.value.notes.find(n => n.id === selectedNoteId.value) ?? null
+  }
 
   function isValidCanvasArray(arr: any[]): boolean {
     if (!Array.isArray(arr)) return false
@@ -293,6 +303,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     save(canvases.value)
   }
 
+  /** Ctrl+Shift+S 显式保存 */
+  function saveCanvas() {
+    persist()
+  }
+
   function setTemplate(tpl: CanvasTemplate) {
     template.value = tpl
   }
@@ -303,7 +318,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     template,
     currentCanvas,
     currentTemplate,
+    selectedNoteId,
     init,
+    selectNote,
+    getSelectedNote,
+    saveCanvas,
     createCanvas,
     switchCanvas,
     deleteCanvas,

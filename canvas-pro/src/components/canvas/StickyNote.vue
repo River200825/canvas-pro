@@ -2,7 +2,7 @@
   <div
     ref="noteRootRef"
     class="sticky-note relative group rounded-lg shadow-note hover:shadow-note-hover transition-all duration-150 p-2.5 pl-3.5"
-    :class="{ 'opacity-60': note.locked }"
+    :class="{ 'opacity-60': note.locked, 'ring-2 ring-primary-500 ring-offset-1': isSelected }"
     :style="{ backgroundColor: color.bg, borderColor: color.border }"
     :data-note-id="note.id"
     role="listitem"
@@ -11,6 +11,7 @@
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
     @focusout="handleFocusOut"
+    @click.stop="select"
   >
     <div
       class="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg opacity-70"
@@ -148,6 +149,13 @@ const contentInputRef = ref<HTMLTextAreaElement | null>(null)
 
 const color = computed(() => getNoteColor(props.note.color))
 
+const isSelected = computed(() => canvasStore.selectedNoteId === props.note.id)
+
+function select(): void {
+  if (props.presentationMode) return
+  canvasStore.selectNote(props.note.id)
+}
+
 function startEdit(focusContent = false): void {
   if (props.presentationMode || props.note.locked) return
   isEditing.value = true
@@ -203,6 +211,7 @@ function handleContentKeydown(event: KeyboardEvent): void {
 
 function deleteNote(): void {
   if (props.note.locked) return
+  if (canvasStore.selectedNoteId === props.note.id) canvasStore.selectNote(null)
   canvasStore.deleteNote(props.note.id)
 }
 

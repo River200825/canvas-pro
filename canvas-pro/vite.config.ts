@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import unocss from 'unocss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
@@ -8,6 +9,31 @@ export default defineConfig({
   plugins: [
     vue(),
     unocss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'icons.svg'],
+      manifest: {
+        name: 'CanvasPro - 个人商业画布',
+        short_name: 'CanvasPro',
+        description: '专业级个人商业画布工具，1:1 复刻 Canvanizer 体验',
+        theme_color: '#0ea5e9',
+        background_color: '#f8fafc',
+        display: 'standalone',
+        start_url: '/canvas-pro/',
+        icons: [
+          {
+            src: 'favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        navigateFallbackDenylist: [],
+      },
+    }),
   ],
   resolve: {
     alias: {

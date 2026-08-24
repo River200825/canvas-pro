@@ -7,7 +7,7 @@
       :class="uiStore.presentationMode ? 'top-0' : 'top-[52px]'"
       data-canvas-area
     >
-      <CanvasGrid :presentation-mode="false" />
+      <CanvasGrid :presentation-mode="uiStore.presentationMode" />
     </div>
 
     <button
@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
@@ -38,6 +38,18 @@ const route = useRoute()
 const router = useRouter()
 const canvasStore = useCanvasStore()
 const uiStore = useUIStore()
+
+// PRD：每 30 分钟自动创建快照
+const AUTO_SNAPSHOT_INTERVAL = 30 * 60 * 1000
+let autoSnapshotTimer: number | undefined
+
+function createAutoSnapshot(): void {
+  if (!canvasStore.currentCanvas) return
+  const now = new Date()
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  canvasStore.createSnapshot(`自动快照 ${hh}:${mm}`)
+}
 
 function syncRouteCanvas(): void {
   const templateId = (route.query.template as string | undefined) ?? undefined
@@ -59,7 +71,15 @@ function syncRouteCanvas(): void {
   }
 }
 
-onMounted(syncRouteCanvas)
+onMounted(() => {
+  syncRouteCanvas()
+  autoSnapshotTimer = window.setInterval(createAutoSnapshot, AUTO_SNAPSHOT_INTERVAL)
+})
+
+onUnmounted(() => {
+  if (autoSnapshotTimer !== undefined) window.clearInterval(autoSnapshotTimer)
+})
+
 watch(
   () => [route.name, route.params.id, route.query.template],
   () => syncRouteCanvas()

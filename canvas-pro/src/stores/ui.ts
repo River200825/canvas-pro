@@ -1,11 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
+type ThemeMode = 'light' | 'dark' | 'auto'
+const THEME_KEY = 'canvas-pro:theme'
+
+function loadInitialTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'auto'
+  const stored = localStorage.getItem(THEME_KEY)
+  return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto'
+}
+
 export const useUIStore = defineStore('ui', () => {
   const viewport = ref({ x: 0, y: 0, scale: 1 })
   const presentationMode = ref(false)
   const showGuide = ref(false)
-  const theme = ref<'light' | 'dark' | 'auto'>('auto')
+  const theme = ref<ThemeMode>(loadInitialTheme())
   const sidebarOpen = ref(false)
   const activeModal = ref<string | null>(null)
 
@@ -37,13 +46,13 @@ export const useUIStore = defineStore('ui', () => {
     showGuide.value = !showGuide.value
   }
 
-  function setTheme(t: 'light' | 'dark' | 'auto') {
+  function setTheme(t: ThemeMode) {
     theme.value = t
     applyTheme()
   }
 
   function cycleTheme() {
-    const order: ('light' | 'dark' | 'auto')[] = ['light', 'dark', 'auto']
+    const order: ThemeMode[] = ['light', 'dark', 'auto']
     const currentIndex = order.indexOf(theme.value)
     theme.value = order[(currentIndex + 1) % 3]
     applyTheme()
@@ -57,6 +66,18 @@ export const useUIStore = defineStore('ui', () => {
     } else {
       root.classList.toggle('dark', theme.value === 'dark')
     }
+    try {
+      localStorage.setItem(THEME_KEY, theme.value)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // auto 模式下跟随系统深浅色切换
+  if (typeof window !== 'undefined') {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (theme.value === 'auto') applyTheme()
+    })
   }
 
   function openModal(name: string) {

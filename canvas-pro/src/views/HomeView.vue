@@ -18,6 +18,7 @@
           >
             <PencilLine class="w-4 h-4" /> 我的画布
           </button>
+          <ThemeToggle />
           <button class="btn-ghost text-sm" @click="router.push('/guide')">教程</button>
           <button class="btn-ghost text-sm" @click="router.push('/examples')">案例库</button>
         </nav>
@@ -41,6 +42,7 @@ import { useRouter } from 'vue-router'
 import { PencilLine } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { getTemplateById } from '@/templates'
+import ThemeToggle from '@/components/toolbar/ThemeToggle.vue'
 import HeroSection from '@/components/home/HeroSection.vue'
 import TemplateGallery from '@/components/home/TemplateGallery.vue'
 import RecentCanvases from '@/components/home/RecentCanvases.vue'

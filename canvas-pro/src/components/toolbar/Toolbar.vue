@@ -99,6 +99,11 @@
       </div>
     </div>
 
+    <button class="btn-secondary !py-1.5 gap-1.5" title="AI 生成画布草稿" @click="openAiGenerate()">
+      <Sparkles class="h-4 w-4 text-primary-600" />
+      <span class="hidden md:inline">AI</span>
+    </button>
+
     <button class="btn-primary !py-1.5 gap-1.5" @click="uiStore.openModal('export')">
       <Download class="h-4 w-4" />
       <span class="hidden sm:inline">导出</span>
@@ -109,11 +114,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Download, History, Keyboard, Maximize2, Monitor, Moon, MoreHorizontal, Redo2, Sun, Undo2 } from 'lucide-vue-next'
+import { Download, History, Keyboard, Maximize2, Monitor, Moon, MoreHorizontal, Redo2, Sparkles, Sun, Undo2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useUIStore } from '@/stores/ui'
 import CanvasSwitcher from '@/components/canvas/CanvasSwitcher.vue'
 import ThemeToggle from './ThemeToggle.vue'
+import { openAiGenerate } from '@/components/ai/aiState'
 
 const router = useRouter()
 const canvasStore = useCanvasStore()

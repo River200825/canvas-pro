@@ -37,6 +37,9 @@
             <button class="btn-secondary gap-1.5" @click="loadUberExample">
               <Lightbulb class="w-4 h-4" /> 载入示例
             </button>
+            <button class="btn-secondary gap-1.5" @click="openAiGenerate()">
+              <Sparkles class="w-4 h-4 text-primary-600" /> AI 生成
+            </button>
           </div>
         </div>
       </div>
@@ -69,6 +72,7 @@ import { getGridStyle } from '@/templates/layout'
 import { useToast } from '@/composables/useToast'
 import { EXAMPLE_CONTENT } from '@/data/examples'
 import { activePointers, pinchState } from './noteInteraction'
+import { openAiGenerate } from '@/components/ai/aiState'
 import type { StickyNote } from '@/types/note'
 
 const props = defineProps<{

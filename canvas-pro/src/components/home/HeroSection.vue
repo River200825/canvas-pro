@@ -40,7 +40,7 @@
           >
             <div
               class="text-[10px] font-semibold px-1.5 py-1 truncate"
-              :style="{ backgroundColor: (block.color || '#e2e8f0') + '33', color: '#334155' }"
+              :style="{ backgroundColor: block.color || '#e2e8f0', color: '#1e293b' }"
             >
               {{ block.title }}
             </div>

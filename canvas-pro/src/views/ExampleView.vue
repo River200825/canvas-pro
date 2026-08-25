@@ -27,7 +27,7 @@
           >
             <div
               class="px-3 py-2 border-b border-canvas-border font-semibold text-sm"
-              :style="{ backgroundColor: (block.color || '#e2e8f0') + '33', color: '#334155' }"
+              :style="{ backgroundColor: block.color || '#e2e8f0', color: '#1e293b' }"
             >
               {{ block.title }}
             </div>

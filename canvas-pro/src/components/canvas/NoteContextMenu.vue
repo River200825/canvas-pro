@@ -29,6 +29,13 @@
       <button class="dropdown-item w-full gap-2" @click="act(() => canvasStore.duplicateNote(menu.note!.id))">
         <Copy class="h-4 w-4" /> 复制
       </button>
+      <button
+        v-if="!menu.note.locked"
+        class="dropdown-item w-full gap-2 text-primary-600 font-medium"
+        @click="act(openCoach)"
+      >
+        <Sparkles class="h-4 w-4" /> AI 打磨...
+      </button>
       <button class="dropdown-item w-full gap-2" @click="act(() => canvasStore.updateNote(menu.note!.id, { locked: !menu.note!.locked }))">
         <component :is="menu.note.locked ? LockOpen : Lock" class="h-4 w-4" />
         {{ menu.note.locked ? '解锁' : '锁定' }}
@@ -48,10 +55,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import { Copy, Lock, LockOpen, Pencil, Trash2 } from 'lucide-vue-next'
+import { Copy, Lock, LockOpen, Pencil, Sparkles, Trash2 } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { NOTE_COLORS } from '@/types/note'
 import { closeNoteContextMenu, noteContextMenu as menu, requestEdit } from './noteInteraction'
+import { openAiCoach } from '@/components/ai/aiState'
 
 const canvasStore = useCanvasStore()
 const menuRef = ref<HTMLElement | null>(null)
@@ -78,6 +86,11 @@ function beginEdit(): void {
   const note = menu.note
   if (!note || note.locked) return
   requestEdit(note.id)
+}
+
+function openCoach(): void {
+  if (!menu.note) return
+  openAiCoach(menu.note.id)
 }
 
 function deleteTargets(): void {

@@ -43,6 +43,9 @@
 
     <NoteContextMenu />
     <BatchBar />
+    <AiGenerateDialog v-if="aiState.generateOpen" @close="aiState.generateOpen = false" />
+    <AiSettingsDialog v-if="aiState.settingsOpen" @close="aiState.settingsOpen = false" />
+    <AiCoachDialog v-if="aiState.coachNoteId" @close="aiState.coachNoteId = null" />
     <SnapshotsPanel v-if="uiStore.activeModal === 'snapshots'" @close="uiStore.closeModal()" />
     <ExportDialog v-if="uiStore.activeModal === 'export'" @close="uiStore.closeModal()" />
   </div>
@@ -60,6 +63,10 @@ import SnapshotsPanel from '@/components/canvas/SnapshotsPanel.vue'
 import ExportDialog from '@/components/export/ExportDialog.vue'
 import NoteContextMenu from '@/components/canvas/NoteContextMenu.vue'
 import BatchBar from '@/components/canvas/BatchBar.vue'
+import AiGenerateDialog from '@/components/ai/AiGenerateDialog.vue'
+import AiSettingsDialog from '@/components/ai/AiSettingsDialog.vue'
+import AiCoachDialog from '@/components/ai/AiCoachDialog.vue'
+import { aiState } from '@/components/ai/aiState'
 
 const route = useRoute()
 const router = useRouter()

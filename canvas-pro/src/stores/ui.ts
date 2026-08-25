@@ -94,6 +94,11 @@ export const useUIStore = defineStore('ui', () => {
 
   watch(() => theme.value, applyTheme, { immediate: true })
 
+  // C5：弹窗打开时锁定背景滚动
+  watch(activeModal, modal => {
+    document.body.style.overflow = modal ? 'hidden' : ''
+  })
+
   return {
     viewport,
     presentationMode,

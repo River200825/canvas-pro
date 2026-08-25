@@ -1,5 +1,6 @@
 <template>
   <ErrorBoundary>
+    <RouteProgress />
     <RouterView />
     <UpdateBanner />
     <AppToast />
@@ -16,6 +17,7 @@ import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import ErrorBoundary from '@/components/ui/ErrorBoundary.vue'
 import UpdateBanner from '@/components/ui/UpdateBanner.vue'
 import AppToast from '@/components/ui/AppToast.vue'
+import RouteProgress from '@/components/ui/RouteProgress.vue'
 import KeyboardShortcutsTable from '@/components/guide/KeyboardShortcutsTable.vue'
 
 const router = useRouter()

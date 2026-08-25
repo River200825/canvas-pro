@@ -1,5 +1,9 @@
 <template>
-  <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[300] flex flex-col items-center gap-2" aria-live="polite">
+  <div
+    class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[300] flex flex-col items-center gap-2"
+    :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
+    aria-live="polite"
+  >
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"

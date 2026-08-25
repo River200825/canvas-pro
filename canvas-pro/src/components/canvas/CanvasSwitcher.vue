@@ -1,9 +1,24 @@
 <template>
   <div ref="rootRef" class="relative">
+    <!-- 工具栏就地重命名（C5） -->
+    <input
+      v-if="toolbarRenaming"
+      ref="toolbarInputRef"
+      v-model="renameDraft"
+      class="input !py-1.5 min-w-[160px] max-w-[280px] text-sm"
+      aria-label="重命名当前画布"
+      @click.stop
+      @keydown.enter.prevent="commitToolbarRename"
+      @keydown.esc="toolbarRenaming = false"
+      @blur="commitToolbarRename"
+    />
     <button
-      class="btn-secondary !py-1.5 flex items-center gap-2 min-w-[160px] max-w-[280px]"
-      aria-label="切换画布"
+      v-else
+      class="btn-secondary !py-1.5 flex items-center gap-2 min-w-[120px] sm:min-w-[160px] max-w-[280px]"
+      aria-label="切换画布（双击重命名）"
+      title="点击切换画布 · 双击重命名"
       @click.stop="open = !open"
+      @dblclick.stop="startToolbarRename"
     >
       <span class="truncate flex-1 text-left">{{ canvasStore.currentCanvas?.name ?? '无画布' }}</span>
       <ChevronDown class="h-4 w-4 shrink-0 transition-transform" :class="{ 'rotate-180': open }" />
@@ -112,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { Copy, FilePlus, Pencil, Trash2, Upload } from 'lucide-vue-next'
 import { useCanvasStore } from '@/stores'
 import { useToast } from '@/composables/useToast'
@@ -129,6 +144,25 @@ const renamingId = ref<string | null>(null)
 const renameDraft = ref('')
 const confirmDelete = ref(false)
 const importPreview = ref<{ name: string; notes: number; blocks: number; json: string } | null>(null)
+const toolbarRenaming = ref(false)
+const toolbarInputRef = ref<HTMLInputElement | null>(null)
+
+function startToolbarRename(): void {
+  const canvas = canvasStore.currentCanvas
+  if (!canvas) return
+  open.value = false
+  renameDraft.value = canvas.name
+  toolbarRenaming.value = true
+  void nextTick(() => toolbarInputRef.value?.select())
+}
+
+function commitToolbarRename(): void {
+  if (!toolbarRenaming.value) return
+  const name = renameDraft.value.trim()
+  const id = canvasStore.currentCanvasId
+  if (name && id) canvasStore.renameCanvas(id, name)
+  toolbarRenaming.value = false
+}
 
 function closeMenus(event: MouseEvent): void {
   if (rootRef.value && !rootRef.value.contains(event.target as Node)) {

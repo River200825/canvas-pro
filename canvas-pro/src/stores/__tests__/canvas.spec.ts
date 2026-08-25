@@ -83,15 +83,16 @@ describe('canvas store', () => {
     expect(store.currentCanvas!.notes).toHaveLength(0)
   })
 
-  it('moveNote 跨区块更新 blockId 与 order', () => {
+  it('moveNote 跨区块更新 blockId，order 追加到目标末尾', () => {
     const store = useCanvasStore()
     store.init()
     const canvas = store.currentCanvas!
     const [b1, b2] = canvas.blocks
     const n1 = store.addNote(b1.id)
-    store.moveNote(n1.id, b2.id, 5)
+    const n2 = store.addNote(b2.id)
+    store.moveNote(n1.id, b2.id)
     expect(n1.blockId).toBe(b2.id)
-    expect(n1.order).toBe(5)
+    expect(n1.order).toBeGreaterThan(n2.order) // 追加在 n2 之后
   })
 
   it('reorderNotes 按目标位置重排 order', () => {
@@ -276,6 +277,80 @@ describe('canvas store', () => {
 
       store.undo()
       expect(store.currentCanvas!.notes).toHaveLength(0)
+    })
+  })
+
+  describe('多选与批量操作（C4）', () => {
+    function setupThreeNotes() {
+      const store = useCanvasStore()
+      store.init()
+      const blockA = store.currentCanvas!.blocks[0].id
+      const blockB = store.currentCanvas!.blocks[1].id
+      const a = store.addNote(blockA)
+      const b = store.addNote(blockA)
+      const c = store.addNote(blockB)
+      return { store, blockA, blockB, a, b, c }
+    }
+
+    it('selectOnly / toggleSelect / setSelection', () => {
+      const { store, a, b } = setupThreeNotes()
+      store.selectOnly(a.id)
+      expect(store.selectedIds).toEqual([a.id])
+      store.toggleSelect(b.id)
+      expect(store.selectedIds).toEqual([a.id, b.id])
+      store.toggleSelect(a.id)
+      expect(store.selectedIds).toEqual([b.id])
+      store.setSelection([a.id, b.id])
+      expect(store.selectedNoteId).toBe(b.id) // 末位为主选
+      store.selectNote(null)
+      expect(store.selectedIds).toEqual([])
+    })
+
+    it('批量删除：一步撤销恢复全部，锁定项自动跳过', () => {
+      const { store, a, b } = setupThreeNotes()
+      store.updateNote(b.id, { locked: true })
+      store.setSelection([a.id, b.id])
+
+      store.deleteNotes([a.id, b.id])
+      const notes = store.currentCanvas!.notes
+      expect(notes.some(n => n.id === a.id)).toBe(false)
+      expect(notes.some(n => n.id === b.id)).toBe(true) // 锁定未删
+
+      store.undo()
+      expect(store.currentCanvas!.notes).toHaveLength(3)
+    })
+
+    it('批量复制生成等量新便签', () => {
+      const { store, a, b } = setupThreeNotes()
+      const before = store.currentCanvas!.notes.length
+      const count = store.duplicateNotes([a.id, b.id])
+      expect(count).toBe(2)
+      expect(store.currentCanvas!.notes).toHaveLength(before + 2)
+      store.undo()
+      expect(store.currentCanvas!.notes).toHaveLength(before)
+    })
+
+    it('批量改色与批量移动（移动后 order 追加到目标区块末尾）', () => {
+      const { store, blockA, blockB, a, b, c } = setupThreeNotes()
+      store.colorNotes([a.id, b.id], 'purple')
+      expect(store.currentCanvas!.notes.find(n => n.id === a.id)!.color).toBe('purple')
+
+      store.moveNotesToBlock([a.id, b.id], blockB)
+      const inB = store.currentCanvas!.notes.filter(n => n.blockId === blockB).sort((x, y) => x.order - y.order)
+      expect(inB).toHaveLength(3)
+      expect(inB.map(n => n.id)).toEqual([c.id, a.id, b.id]) // 原有在前，移入追加
+
+      store.undo()
+      expect(store.currentCanvas!.notes.filter(n => n.blockId === blockA)).toHaveLength(2)
+    })
+
+    it('Delete 快捷键走批量删除路径', () => {
+      const { store, a, b } = setupThreeNotes()
+      store.setSelection([a.id, b.id])
+      // 模拟 useKeyboardShortcuts 的批量分支
+      store.deleteNotes([...store.selectedIds])
+      expect(store.currentCanvas!.notes).toHaveLength(1)
+      expect(store.selectedIds).toHaveLength(0)
     })
   })
 

@@ -32,6 +32,17 @@
       退出演示 (Esc)
     </button>
 
+    <!-- 演示模式页码（C6） -->
+    <div
+      v-if="uiStore.presentationMode && canvasStore.canvases.length > 1"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] px-3 py-1.5 rounded-full bg-black/60 text-white text-sm tabular-nums"
+      data-export-ignore
+    >
+      {{ currentPage }} / {{ canvasStore.canvases.length }}
+    </div>
+
+    <NoteContextMenu />
+    <BatchBar />
     <SnapshotsPanel v-if="uiStore.activeModal === 'snapshots'" @close="uiStore.closeModal()" />
     <ExportDialog v-if="uiStore.activeModal === 'export'" @close="uiStore.closeModal()" />
   </div>
@@ -47,11 +58,19 @@ import Toolbar from '@/components/toolbar/Toolbar.vue'
 import CanvasGrid from '@/components/canvas/CanvasGrid.vue'
 import SnapshotsPanel from '@/components/canvas/SnapshotsPanel.vue'
 import ExportDialog from '@/components/export/ExportDialog.vue'
+import NoteContextMenu from '@/components/canvas/NoteContextMenu.vue'
+import BatchBar from '@/components/canvas/BatchBar.vue'
 
 const route = useRoute()
 const router = useRouter()
 const canvasStore = useCanvasStore()
 const uiStore = useUIStore()
+
+/** 演示模式页码（C6） */
+const currentPage = computed(() => {
+  const index = canvasStore.canvases.findIndex(c => c.id === canvasStore.currentCanvasId)
+  return index + 1
+})
 
 /** 路由指向的画布不存在（A5） */
 const notFound = computed(() => {

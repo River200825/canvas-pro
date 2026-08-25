@@ -40,6 +40,9 @@ export const useCanvasStore = defineStore('canvas', () => {
   /** 新建便利贴待自动进入编辑态（B3） */
   const pendingEditNoteId = ref<string | null>(null)
 
+  /** 多选（C4）：有序数组，末位为主选 */
+  const selectedIds = ref<string[]>([])
+
   /** 撤销/重做栈：仅存当前画布的 notes/blocks 深拷贝，不持久化 */
   interface UndoEntry {
     notes: StickyNote[]
@@ -101,11 +104,98 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   function selectNote(id: string | null) {
     selectedNoteId.value = id
+    selectedIds.value = id ? [id] : []
+  }
+
+  function selectOnly(id: string): void {
+    selectedNoteId.value = id
+    selectedIds.value = [id]
+  }
+
+  function toggleSelect(id: string): void {
+    const index = selectedIds.value.indexOf(id)
+    if (index === -1) {
+      selectedIds.value = [...selectedIds.value, id]
+    } else {
+      selectedIds.value = selectedIds.value.filter(v => v !== id)
+    }
+    selectedNoteId.value = selectedIds.value.at(-1) ?? null
+  }
+
+  function setSelection(ids: string[]): void {
+    selectedIds.value = [...ids]
+    selectedNoteId.value = ids.at(-1) ?? null
   }
 
   function getSelectedNote(): StickyNote | null {
-    if (!selectedNoteId.value || !currentCanvas.value) return null
-    return currentCanvas.value.notes.find(n => n.id === selectedNoteId.value) ?? null
+    if (!currentCanvas.value) return null
+    const id = selectedIds.value.at(-1) ?? selectedNoteId.value
+    if (!id) return null
+    return currentCanvas.value.notes.find(n => n.id === id) ?? null
+  }
+
+  /** 批量删除（C4）：整批一步撤销；锁定项自动跳过 */
+  function deleteNotes(ids: string[]): void {
+    if (!currentCanvas.value || ids.length === 0) return
+    const set = new Set(ids)
+    const deletable = currentCanvas.value.notes.filter(n => set.has(n.id) && !n.locked).map(n => n.id)
+    if (deletable.length === 0) return
+    pushUndo()
+    const dset = new Set(deletable)
+    currentCanvas.value.notes = currentCanvas.value.notes.filter(n => !dset.has(n.id))
+    if (selectedNoteId.value && dset.has(selectedNoteId.value)) selectedNoteId.value = null
+    selectedIds.value = selectedIds.value.filter(id => !dset.has(id))
+    currentCanvas.value.updatedAt = Date.now()
+    persist()
+  }
+
+  /** 批量复制（C4） */
+  function duplicateNotes(ids: string[]): number {
+    if (!currentCanvas.value || ids.length === 0) return 0
+    pushUndo()
+    const now = Date.now()
+    const copies = currentCanvas.value.notes
+      .filter(n => ids.includes(n.id))
+      .map((n, i) => ({
+        ...n,
+        id: generateNoteId(),
+        order: n.order + 0.5 + i * 0.001,
+        createdAt: now,
+        updatedAt: now,
+      }))
+    currentCanvas.value.notes.push(...copies)
+    currentCanvas.value.updatedAt = now
+    persist()
+    return copies.length
+  }
+
+  /** 批量改色（C4） */
+  function colorNotes(ids: string[], color: StickyNote['color']): void {
+    if (!currentCanvas.value || ids.length === 0) return
+    pushUndo()
+    const set = new Set(ids)
+    for (const note of currentCanvas.value.notes) {
+      if (set.has(note.id)) note.color = color
+    }
+    currentCanvas.value.updatedAt = Date.now()
+    persist()
+  }
+
+  /** 批量移动到区块（C4） */
+  function moveNotesToBlock(ids: string[], targetBlockId: string | null): void {
+    if (!currentCanvas.value || ids.length === 0) return
+    pushUndo()
+    const set = new Set(ids)
+    let order = nextOrder(targetBlockId, ids)
+    for (const note of currentCanvas.value.notes) {
+      if (set.has(note.id)) {
+        note.blockId = targetBlockId
+        note.order = order++
+        note.updatedAt = Date.now()
+      }
+    }
+    currentCanvas.value.updatedAt = Date.now()
+    persist()
   }
 
   function isValidCanvasArray(arr: any[]): boolean {
@@ -278,13 +368,23 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
-  function moveNote(noteId: string, targetBlockId: string | null, newOrder: number) {
+  /** 目标区块的追加位置：现有最大 order + 1（order 混用时间戳，不能用数量） */
+  function nextOrder(blockId: string | null, excludeIds: string[] = []): number {
+    if (!currentCanvas.value) return 0
+    const exclude = new Set(excludeIds)
+    const orders = currentCanvas.value.notes
+      .filter(n => n.blockId === blockId && !exclude.has(n.id))
+      .map(n => n.order)
+    return orders.length ? Math.max(...orders) + 1 : 0
+  }
+
+  function moveNote(noteId: string, targetBlockId: string | null): void {
     if (!currentCanvas.value) return
     pushUndo()
     const note = currentCanvas.value.notes.find((n: StickyNote) => n.id === noteId)
     if (note) {
       note.blockId = targetBlockId
-      note.order = newOrder
+      note.order = nextOrder(targetBlockId, [noteId])
       note.updatedAt = Date.now()
       currentCanvas.value.updatedAt = Date.now()
       persist()
@@ -452,12 +552,20 @@ export const useCanvasStore = defineStore('canvas', () => {
     currentCanvas,
     currentTemplate,
     selectedNoteId,
+    selectedIds,
     pendingEditNoteId,
     canUndo,
     canRedo,
     init,
     selectNote,
+    selectOnly,
+    toggleSelect,
+    setSelection,
     getSelectedNote,
+    deleteNotes,
+    duplicateNotes,
+    colorNotes,
+    moveNotesToBlock,
     saveCanvas,
     pushUndo,
     undo,

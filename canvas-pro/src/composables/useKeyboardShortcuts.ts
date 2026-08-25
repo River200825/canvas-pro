@@ -43,10 +43,21 @@ export function useKeyboardShortcuts() {
   }
 
   function deleteSelected(): void {
-    if (canvasStore.selectedNoteId && !canvasStore.getSelectedNote()?.locked) {
-      canvasStore.deleteNote(canvasStore.selectedNoteId)
+    const ids = canvasStore.selectedIds.length
+      ? [...canvasStore.selectedIds]
+      : canvasStore.selectedNoteId
+        ? [canvasStore.selectedNoteId]
+        : []
+    if (ids.length === 0) return
+
+    if (ids.length === 1) {
+      const note = canvasStore.getSelectedNote()
+      if (!note || note.locked) return
+      canvasStore.deleteNote(note.id)
       canvasStore.selectNote(null)
+      return
     }
+    canvasStore.deleteNotes(ids)
   }
 
   function copySelected(): void {
@@ -79,9 +90,10 @@ export function useKeyboardShortcuts() {
 
   const shortcuts: ShortcutDef[] = [
     // —— 全局 ——
-    { key: 'Escape', description: '关闭弹窗 / 退出演示', action: () => {
+    { key: 'Escape', description: '关闭弹窗 / 退出演示 / 取消选择', action: () => {
         uiStore.closeModal()
         if (uiStore.presentationMode) uiStore.setPresentationMode(false)
+        canvasStore.selectNote(null)
       } },
     { key: '?', shift: true, description: '显示快捷键帮助', action: () => uiStore.openModal('shortcuts') },
     // —— 编辑器内 ——
